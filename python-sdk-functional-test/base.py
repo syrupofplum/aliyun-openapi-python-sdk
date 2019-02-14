@@ -17,7 +17,6 @@ import json
 import sys
 import os
 import threading
-from http.server import HTTPServer
 
 import sys
 from aliyunsdkcore.client import AcsClient
@@ -43,11 +42,13 @@ else:
     from unittest import TestCase
 
 # the version under py3 use the different package
-try:
-    from http.server import SimpleHTTPRequestHandler, HTTPServer
-except ImportError:
-    import SimpleHTTPRequestHandler
+if sys.version_info[0] == 3:
+    from http.server import SimpleHTTPRequestHandler
+    from http.server import HTTPServer
+else:
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
     from BaseHTTPServer import HTTPServer
+
 
 def request_helper(client, request, **params):
     for key, value in iteritems(params):
