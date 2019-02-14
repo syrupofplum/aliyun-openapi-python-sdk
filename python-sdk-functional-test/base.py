@@ -16,6 +16,8 @@ import os.path
 import json
 import sys
 import os
+import threading
+from http.server import HTTPServer
 
 import sys
 from aliyunsdkcore.client import AcsClient
@@ -40,6 +42,12 @@ if sys.version_info[:2] == (2, 6):
 else:
     from unittest import TestCase
 
+# the version under py3 use the different package
+try:
+    from http.server import SimpleHTTPRequestHandler, HTTPServer
+except ImportError:
+    import SimpleHTTPRequestHandler
+    from BaseHTTPServer import HTTPServer
 
 def request_helper(client, request, **params):
     for key, value in iteritems(params):
@@ -232,4 +240,43 @@ def disabled(func):
     def _decorator(func):
         pass
     return _decorator
+
+
+class MyServer:
+    _headers = {}
+    _url = ''
+
+    def __enter__(self):
+        class ServerHandler(SimpleHTTPRequestHandler):
+
+            def do_GET(_self):
+                _self.protocol_version = 'HTTP/1.1'
+                self._headers = _self.headers
+                self._url = _self.path
+                _self.send_response(200)
+                _self.send_header("Content-type", "application/json")
+                _self.end_headers()
+                _self.wfile.write(b"{}")
+
+        self.server = HTTPServer(("", 51352), ServerHandler)
+
+        def thread_func():
+            self.server.serve_forever()
+
+        thread = threading.Thread(target=thread_func)
+        thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.server:
+            self.server.shutdown()
+            self.server = None
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @property
+    def url(self):
+        return self._url
 
